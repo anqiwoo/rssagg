@@ -1,4 +1,4 @@
 .idea/
 rssagg
 .env
-vendor/  # Usually excluded unless required by policy
+vendor/
