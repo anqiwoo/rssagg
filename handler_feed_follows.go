@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/anqiwoo/rssagg/internal/database"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"net/http"
 	"time"
@@ -22,7 +23,7 @@ func (apiCfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.
 		return
 	}
 
-	feed, err := apiCfg.DB.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{
+	feedFollow, err := apiCfg.DB.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
@@ -34,7 +35,7 @@ func (apiCfg *apiConfig) handlerCreateFeedFollow(w http.ResponseWriter, r *http.
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, feed)
+	respondWithJSON(w, http.StatusCreated, databaseFeedFollowToFeedFollow(feedFollow))
 }
 
 func (apiCfg *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -44,4 +45,25 @@ func (apiCfg *apiConfig) handlerGetFeedFollows(w http.ResponseWriter, r *http.Re
 		return
 	}
 	respondWithJSON(w, http.StatusOK, databaseFeedFollowsToFeedFollows(feedFollows))
+}
+
+func (apiCfg *apiConfig) handlerDeleteFeedFollow(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedFollowIDStr := chi.URLParam(r, "feedFollowID")
+	feedFollowID, err := uuid.Parse(feedFollowIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Error parsing feed follow ID: %s", err))
+		return
+	}
+
+	rowsAffected, err := apiCfg.DB.CustomDeleteFeedFollow(r.Context(), database.DeleteFeedFollowParams{
+		ID:     feedFollowID,
+		UserID: user.ID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Error deleting feed follow: %s", err))
+		return
+	}
+
+	message := fmt.Sprintf("DELETE %d ROW", rowsAffected)
+	respondWithJSON(w, http.StatusOK, map[string]string{"message": message})
 }
